@@ -9,30 +9,39 @@
 #Required mapping. Represents the buildspec version.
 version: 0.2
 
+env:
+  variables:
+      AWS_REGION: us-west-1
+      AWS_ACCOUNT_ID: 289847908642
+      AWS_SERVICE_NAME: .dkr.ecr.
+      AWS_DOMAIN_NAME: .amazonaws.com
+      IMAGE_NAME: husain-sentiment-analysis-docker-image
+      CONTAINER_NAME: husain-sentiment-analysis-docker-container  
+
 #Required sequence. Represents the commands CodeBuild runs during each phase of the build. 
 phases:
   pre_build:
     commands:
-      - echo Logging in to Amazon ECR...
-      - CODEBUILD_RESOLVED_SOURCE_VERSION="${CODEBUILD_RESOLVED_SOURCE_VERSION:-$IMAGE_TAG}"
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - echo image_tag $IMAGE_TAG
-      - REPO="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com"
-      - IMAGE_URI="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$IMAGE_REPO_NAME:$IMAGE_TAG"
-      - echo Repository $REPO
-      - docker login -u AWS -p $(aws ecr get-login-password --region $AWS_DEFAULT_REGION) $REPO
+      - REPOSITORY_URL="$AWS_ACCOUNT_ID$AWS_SERVICE_NAME$AWS_REGION$AWS_DOMAIN_NAME"
+      - echo Logging in to Amazon ECR..,
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URL
   build:
     commands:
       - echo Build started on `date`
       - echo Building the Docker image...
-      - docker build -t $IMAGE_URI .
+      - docker build -t $IMAGE_NAME .
   post_build:
     commands:
-      - bash -c "if [ /"$CODEBUILD_BUILD_SUCCEEDING/" == /"0/" ]; then exit 1; fi"
-      - echo Build stage successfully completed on `date`
+      - docker image tag $IMAGE_NAME:latest $REPOSITORY_URL/$IMAGE_NAME:latest
+      - echo image name =  $IMAGE_NAME:latest
+      - echo image url = $REPOSITORY_URL/$IMAGE_NAME:latest  
+      - echo Build and tag stage successfully completed on `date`
       - echo Pushing the Docker image...
-      - docker push $IMAGE_URI
-      - printf '[{"name":"sentiment-analysis-container","imageUri":"%s"}]' "$IMAGE_URI" > images.json
+      - docker push $REPOSITORY_URL/$IMAGE_NAME:latest
+      - echo Writing image definitions file....
+      - printf '[{"name":"'"$CONTAINER_NAME"'","imageUri":"'"$REPOSITORY_URL"'/'"$IMAGE_NAME"':latest"}]' > imagedefinitions.json
+      - cat imagedefinitions.json
+      - echo Build completed on `date`
 artifacts:
-  files: images.json
+  files: imagedefinitions.json
 
