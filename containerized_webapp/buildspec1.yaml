@@ -1,1 +1,16 @@
-dsfsda
+version: 0.2
+
+
+
+#Required sequence. Represents the commands CodeBuild runs during each phase of the build. 
+phases:
+  pre_build:
+    commands: 
+      - echo Logging in to Amazon ECR..,
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Building the Docker image...
+  post_build:
+    commands:
+      - echo Build completed on `date`
